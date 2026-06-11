@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bound State Animation</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101217;
+      --panel: #181d25;
+      --panel-2: #222a36;
+      --text: #eef3ff;
+      --muted: #aeb8c8;
+      --line: #3c4658;
+      --cyan: #5ed7ca;
+      --gold: #ffd36e;
+      --rose: #ff7fa5;
+      --violet: #a996ff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(94, 215, 202, 0.16), transparent 30rem),
+        radial-gradient(circle at 85% 8%, rgba(255, 211, 110, 0.12), transparent 26rem),
+        linear-gradient(180deg, #13161d, var(--bg));
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    main {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 32px 0;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 5vw, 4.2rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 760px;
+    }
+
+    .equation {
+      align-self: center;
+      padding: 14px 16px;
+      border: 1px solid rgba(174, 184, 200, 0.22);
+      border-radius: 8px;
+      background: rgba(24, 29, 37, 0.86);
+      color: var(--gold);
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: clamp(1rem, 2vw, 1.3rem);
+      white-space: nowrap;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-rows: minmax(340px, 62vh) auto;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 340px;
+      border: 1px solid rgba(174, 184, 200, 0.18);
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(34, 42, 54, 0.96), rgba(16, 18, 23, 0.98));
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.24);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .key {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 28px;
+    }
+
+    .swatch {
+      width: 28px;
+      height: 3px;
+      border-radius: 999px;
+    }
+
+    .potential {
+      background: var(--line);
+    }
+
+    .wave {
+      background: var(--cyan);
+    }
+
+    .probability {
+      background: var(--gold);
+    }
+
+    .energy {
+      background: var(--rose);
+    }
+
+    aside {
+      padding: 16px;
+      border: 1px solid rgba(174, 184, 200, 0.18);
+      border-radius: 8px;
+      background: rgba(24, 29, 37, 0.84);
+    }
+
+    .mode {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+
+    button {
+      min-height: 38px;
+      border: 1px solid rgba(174, 184, 200, 0.22);
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+    }
+
+    button[aria-pressed="true"] {
+      border-color: rgba(255, 211, 110, 0.9);
+      background: rgba(255, 211, 110, 0.15);
+      color: #fff6d7;
+    }
+
+    .control {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    output {
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--gold);
+    }
+
+    .readout {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(174, 184, 200, 0.16);
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .readout strong {
+      color: var(--text);
+      font-weight: 650;
+    }
+
+    @media (max-width: 840px) {
+      main {
+        width: min(100vw - 20px, 680px);
+        padding: 18px 0;
+      }
+
+      header,
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .equation {
+        justify-self: start;
+        white-space: normal;
+      }
+
+      .stage {
+        grid-template-rows: minmax(380px, 64vh) auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Bound State</h1>
+        <p>束缚态的波函数局域在势阱附近，能量低于外部势垒，因此不会像自由粒子那样逃向无穷远。调节势阱深度、态编号和叠加比例，观察局域化和离散能级。</p>
+      </div>
+      <div class="equation">E &lt; V<sub>outside</sub>, &nbsp; ψ(x) → 0 as |x| → ∞</div>
+    </header>
+
+    <section class="workspace">
+      <div class="stage">
+        <canvas id="boundCanvas" aria-label="bound state animation"></canvas>
+        <div class="legend" aria-hidden="true">
+          <span class="key"><span class="swatch potential"></span>potential well</span>
+          <span class="key"><span class="swatch energy"></span>bound energy</span>
+          <span class="key"><span class="swatch wave"></span>Re ψ(x,t)</span>
+          <span class="key"><span class="swatch probability"></span>|ψ(x,t)|²</span>
+        </div>
+      </div>
+
+      <aside>
+        <div class="mode" role="group" aria-label="bound state level">
+          <button type="button" data-level="1" aria-pressed="true">1s</button>
+          <button type="button" data-level="2" aria-pressed="false">2s</button>
+          <button type="button" data-level="3" aria-pressed="false">3s</button>
+        </div>
+
+        <div class="control">
+          <label for="depth">势阱深度 <output id="depthOut">1.00</output></label>
+          <input id="depth" type="range" min="0.65" max="1.45" value="1" step="0.01">
+        </div>
+
+        <div class="control">
+          <label for="speed">相位速度 <output id="speedOut">1.00x</output></label>
+          <input id="speed" type="range" min="0" max="3" value="1" step="0.05">
+        </div>
+
+        <div class="control">
+          <label for="mix">叠加态比例 <output id="mixOut">0%</output></label>
+          <input id="mix" type="range" min="0" max="1" value="0" step="0.01">
+        </div>
+
+        <div class="readout">
+          <div><strong>Bound:</strong> 波函数在势阱外指数衰减，粒子主要被限制在井中。</div>
+          <div><strong>Discrete:</strong> 只有少数离散能级能稳定存在，能量线低于外部势垒。</div>
+          <div><strong>Superposition:</strong> 两个束缚态叠加后，概率密度会在井内周期性重排。</div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.querySelector("#boundCanvas");
+    const ctx = canvas.getContext("2d");
+    const depth = document.querySelector("#depth");
+    const speed = document.querySelector("#speed");
+    const mix = document.querySelector("#mix");
+    const depthOut = document.querySelector("#depthOut");
+    const speedOut = document.querySelector("#speedOut");
+    const mixOut = document.querySelector("#mixOut");
+    const buttons = [...document.querySelectorAll("[data-level]")];
+
+    let level = 1;
+    let start = performance.now();
+    let dpr = 1;
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function envelope(x, wellHalfWidth, depthValue) {
+      const edgeDistance = Math.max(0, Math.abs(x) - wellHalfWidth);
+      const decay = 4.2 + depthValue * 2.6;
+      return Math.exp(-decay * edgeDistance);
+    }
+
+    function boundPhi(mode, x, wellHalfWidth, depthValue) {
+      const u = (x + wellHalfWidth) / (2 * wellHalfWidth);
+      const insideShape = Math.sin(mode * Math.PI * Math.max(0, Math.min(1, u)));
+      const outsideShape = Math.sin(mode * Math.PI * (x < 0 ? 0 : 1));
+      const edgeSign = mode % 2 === 0 && x > 0 ? -1 : 1;
+      const outsideTail = edgeSign * outsideShape;
+      const shape = Math.abs(x) <= wellHalfWidth ? insideShape : outsideTail;
+      return shape * envelope(x, wellHalfWidth, depthValue);
+    }
+
+    function energy(mode, depthValue) {
+      return 0.13 + mode * mode * 0.105 / depthValue;
+    }
+
+    function mapX(x, width) {
+      return 50 + ((x + 1) / 2) * (width - 100);
+    }
+
+    function drawPath(fn, scale, offsetY, width) {
+      ctx.beginPath();
+      const samples = Math.max(360, Math.round(width));
+      for (let i = 0; i <= samples; i++) {
+        const x = -1 + 2 * i / samples;
+        const px = mapX(x, width);
+        const py = offsetY - fn(x) * scale;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+    }
+
+    function drawScene(width, height, wellHalfWidth, depthValue) {
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#101217";
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = "rgba(174, 184, 200, 0.12)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 10; i++) {
+        const x = 50 + i * (width - 100) / 10;
+        ctx.beginPath();
+        ctx.moveTo(x, 34);
+        ctx.lineTo(x, height - 38);
+        ctx.stroke();
+      }
+
+      const zeroY = height * 0.68;
+      const barrierY = height * 0.22;
+      const wellY = zeroY - (height * 0.23 * depthValue);
+      const leftEdge = mapX(-wellHalfWidth, width);
+      const rightEdge = mapX(wellHalfWidth, width);
+
+      ctx.fillStyle = "rgba(60, 70, 88, 0.24)";
+      ctx.fillRect(50, barrierY, leftEdge - 50, zeroY - barrierY);
+      ctx.fillRect(rightEdge, barrierY, width - 50 - rightEdge, zeroY - barrierY);
+      ctx.fillStyle = "rgba(94, 215, 202, 0.07)";
+      ctx.fillRect(leftEdge, wellY, rightEdge - leftEdge, zeroY - wellY);
+
+      ctx.strokeStyle = "#3c4658";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(50, barrierY);
+      ctx.lineTo(leftEdge, barrierY);
+      ctx.lineTo(leftEdge, wellY);
+      ctx.lineTo(rightEdge, wellY);
+      ctx.lineTo(rightEdge, barrierY);
+      ctx.lineTo(width - 50, barrierY);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(174, 184, 200, 0.35)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(42, zeroY);
+      ctx.lineTo(width - 42, zeroY);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(238, 243, 255, 0.9)";
+      ctx.font = "600 14px Segoe UI, sans-serif";
+      ctx.fillText("finite potential well", 50, 28);
+      ctx.fillStyle = "rgba(174, 184, 200, 0.78)";
+      ctx.font = "12px Segoe UI, sans-serif";
+      ctx.fillText("outside barrier", 58, barrierY - 10);
+      ctx.fillText("localized region", leftEdge + 14, wellY + 22);
+      ctx.fillText("x", width - 58, zeroY + 22);
+    }
+
+    function draw(now) {
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      const depthValue = Number(depth.value);
+      const speedValue = Number(speed.value);
+      const mixAmount = Number(mix.value);
+      const wellHalfWidth = 0.42;
+      const t = (now - start) / 1000;
+      const nextLevel = level === 3 ? 2 : level + 1;
+      const e1 = energy(level, depthValue);
+      const e2 = energy(nextLevel, depthValue);
+      const phase1 = e1 * 10 * speedValue * t;
+      const phase2 = e2 * 10 * speedValue * t;
+      const baseWeight = Math.sqrt(1 - mixAmount);
+      const mixWeight = Math.sqrt(mixAmount);
+
+      depthOut.textContent = depthValue.toFixed(2);
+      speedOut.textContent = `${speedValue.toFixed(2)}x`;
+      mixOut.textContent = `${Math.round(mixAmount * 100)}%`;
+
+      drawScene(width, height, wellHalfWidth, depthValue);
+
+      const zeroY = height * 0.68;
+      const boundEnergyY = zeroY - height * (0.11 + e1 * 0.55);
+      ctx.strokeStyle = "#ff7fa5";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 8]);
+      ctx.beginPath();
+      ctx.moveTo(50, boundEnergyY);
+      ctx.lineTo(width - 50, boundEnergyY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#ffadc3";
+      ctx.font = "600 12px Segoe UI, sans-serif";
+      ctx.fillText(`E${level}`, width - 86, boundEnergyY - 8);
+
+      const re = (x) => {
+        const a = boundPhi(level, x, wellHalfWidth, depthValue) * Math.cos(phase1);
+        const b = boundPhi(nextLevel, x, wellHalfWidth, depthValue) * Math.cos(phase2);
+        return baseWeight * a + mixWeight * b;
+      };
+      const im = (x) => {
+        const a = -boundPhi(level, x, wellHalfWidth, depthValue) * Math.sin(phase1);
+        const b = -boundPhi(nextLevel, x, wellHalfWidth, depthValue) * Math.sin(phase2);
+        return baseWeight * a + mixWeight * b;
+      };
+      const prob = (x) => {
+        const real = re(x);
+        const imag = im(x);
+        return real * real + imag * imag;
+      };
+
+      const waveScale = Math.min(110, height * 0.16);
+      const probScale = Math.min(120, height * 0.18);
+
+      drawPath(re, waveScale, boundEnergyY, width);
+      ctx.strokeStyle = "#5ed7ca";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.globalAlpha = 0.2;
+      drawPath(prob, probScale, zeroY, width);
+      ctx.lineTo(width - 50, zeroY);
+      ctx.lineTo(50, zeroY);
+      ctx.closePath();
+      ctx.fillStyle = "#ffd36e";
+      ctx.fill();
+      ctx.restore();
+
+      drawPath(prob, probScale, zeroY, width);
+      ctx.strokeStyle = "#ffd36e";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      const pulseX = mapX(Math.sin(t * speedValue * 1.7) * wellHalfWidth, width);
+      ctx.fillStyle = "rgba(169, 150, 255, 0.2)";
+      ctx.beginPath();
+      ctx.arc(pulseX, zeroY - 18, 9, 0, Math.PI * 2);
+      ctx.fill();
+
+      requestAnimationFrame(draw);
+    }
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        level = Number(button.dataset.level);
+        buttons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+      });
+    });
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+    requestAnimationFrame(draw);
+  </script>
+</body>
+</html>
