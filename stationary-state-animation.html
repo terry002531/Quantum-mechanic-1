@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stationary State Animation</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111318;
+      --panel: #191d24;
+      --panel-2: #202633;
+      --text: #edf2ff;
+      --muted: #aab4c8;
+      --line: #3b465a;
+      --accent: #66d9c6;
+      --accent-2: #ffcf6a;
+      --accent-3: #ff7f9f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 20% 15%, rgba(102, 217, 198, 0.14), transparent 30rem),
+        radial-gradient(circle at 78% 20%, rgba(255, 207, 106, 0.12), transparent 26rem),
+        var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    main {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 32px 0;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: end;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 5vw, 4.2rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 760px;
+    }
+
+    .equation {
+      align-self: center;
+      padding: 14px 16px;
+      border: 1px solid rgba(170, 180, 200, 0.24);
+      border-radius: 8px;
+      background: rgba(25, 29, 36, 0.86);
+      color: var(--accent);
+      font-family: "Cambria Math", "Times New Roman", serif;
+      font-size: clamp(1rem, 2vw, 1.35rem);
+      white-space: nowrap;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .stage {
+      display: grid;
+      grid-template-rows: minmax(320px, 62vh) auto;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 320px;
+      border: 1px solid rgba(170, 180, 200, 0.18);
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(32, 38, 51, 0.9), rgba(17, 19, 24, 0.96));
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .key {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 28px;
+    }
+
+    .swatch {
+      width: 28px;
+      height: 3px;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .swatch.real {
+      background: var(--accent);
+    }
+
+    .swatch.imag {
+      background: var(--accent-3);
+    }
+
+    .swatch.prob {
+      background: var(--accent-2);
+    }
+
+    aside {
+      padding: 16px;
+      border: 1px solid rgba(170, 180, 200, 0.18);
+      border-radius: 8px;
+      background: rgba(25, 29, 36, 0.82);
+    }
+
+    .control {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    output {
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .mode {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-bottom: 18px;
+    }
+
+    button {
+      min-height: 38px;
+      border: 1px solid rgba(170, 180, 200, 0.22);
+      border-radius: 8px;
+      background: var(--panel-2);
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+    }
+
+    button[aria-pressed="true"] {
+      border-color: rgba(102, 217, 198, 0.9);
+      background: rgba(102, 217, 198, 0.16);
+      color: #dffff9;
+    }
+
+    .readout {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(170, 180, 200, 0.16);
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .readout strong {
+      color: var(--text);
+      font-weight: 650;
+    }
+
+    @media (max-width: 840px) {
+      main {
+        width: min(100vw - 20px, 680px);
+        padding: 18px 0;
+      }
+
+      header,
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .equation {
+        justify-self: start;
+        white-space: normal;
+      }
+
+      .stage {
+        grid-template-rows: minmax(360px, 64vh) auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Stationary State</h1>
+        <p>能量本征态的整体相位随时间旋转，但概率密度保持不变。拖动量子数、速度和相位，观察“波在动，分布不动”的核心特征。</p>
+      </div>
+      <div class="equation">ψ<sub>n</sub>(x,t)=φ<sub>n</sub>(x)e<sup>-iE<sub>n</sub>t/ℏ</sup></div>
+    </header>
+
+    <section class="workspace">
+      <div class="stage">
+        <canvas id="stateCanvas" aria-label="stationary state animation"></canvas>
+        <div class="legend" aria-hidden="true">
+          <span class="key"><span class="swatch real"></span>Re ψ(x,t)</span>
+          <span class="key"><span class="swatch imag"></span>Im ψ(x,t)</span>
+          <span class="key"><span class="swatch prob"></span>|ψ(x,t)|²</span>
+        </div>
+      </div>
+
+      <aside>
+        <div class="mode" role="group" aria-label="quantum number">
+          <button type="button" data-n="1" aria-pressed="true">n=1</button>
+          <button type="button" data-n="2" aria-pressed="false">n=2</button>
+          <button type="button" data-n="3" aria-pressed="false">n=3</button>
+        </div>
+
+        <div class="control">
+          <label for="speed">演化速度 <output id="speedOut">1.00x</output></label>
+          <input id="speed" type="range" min="0" max="3" value="1" step="0.05">
+        </div>
+
+        <div class="control">
+          <label for="phase">初始相位 <output id="phaseOut">0.00π</output></label>
+          <input id="phase" type="range" min="0" max="6.283185307" value="0" step="0.01">
+        </div>
+
+        <div class="control">
+          <label for="mix">叠加态对比 <output id="mixOut">0%</output></label>
+          <input id="mix" type="range" min="0" max="1" value="0" step="0.01">
+        </div>
+
+        <div class="readout">
+          <div><strong>Stationary:</strong> 概率密度曲线固定，只发生复相位旋转。</div>
+          <div><strong>Superposition:</strong> 叠加态不是单一能量本征态，概率密度会出现拍动。</div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.querySelector("#stateCanvas");
+    const ctx = canvas.getContext("2d");
+    const speed = document.querySelector("#speed");
+    const phase = document.querySelector("#phase");
+    const mix = document.querySelector("#mix");
+    const speedOut = document.querySelector("#speedOut");
+    const phaseOut = document.querySelector("#phaseOut");
+    const mixOut = document.querySelector("#mixOut");
+    const buttons = [...document.querySelectorAll("[data-n]")];
+
+    let n = 1;
+    let start = performance.now();
+    let dpr = 1;
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function phi(mode, x) {
+      return Math.sqrt(2) * Math.sin(mode * Math.PI * x);
+    }
+
+    function energy(mode) {
+      return mode * mode;
+    }
+
+    function pathFor(fn, scale, offsetY, width, height) {
+      ctx.beginPath();
+      const samples = Math.max(260, Math.round(width));
+      for (let i = 0; i <= samples; i++) {
+        const x = i / samples;
+        const px = 48 + x * (width - 96);
+        const py = offsetY - fn(x) * scale;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+    }
+
+    function drawGrid(width, height) {
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#111318";
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = "rgba(170, 180, 200, 0.12)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 10; i++) {
+        const x = 48 + i * (width - 96) / 10;
+        ctx.beginPath();
+        ctx.moveTo(x, 34);
+        ctx.lineTo(x, height - 34);
+        ctx.stroke();
+      }
+
+      const mid = height * 0.42;
+      const bottom = height * 0.76;
+      ctx.strokeStyle = "rgba(170, 180, 200, 0.32)";
+      [mid, bottom].forEach((y) => {
+        ctx.beginPath();
+        ctx.moveTo(40, y);
+        ctx.lineTo(width - 40, y);
+        ctx.stroke();
+      });
+
+      ctx.fillStyle = "rgba(237, 242, 255, 0.88)";
+      ctx.font = "600 14px Segoe UI, sans-serif";
+      ctx.fillText("wavefunction components", 48, 28);
+      ctx.fillText("probability density", 48, height * 0.64);
+      ctx.fillStyle = "rgba(170, 180, 200, 0.8)";
+      ctx.font = "12px Segoe UI, sans-serif";
+      ctx.fillText("x = 0", 48, height - 18);
+      ctx.fillText("x = L", width - 76, height - 18);
+    }
+
+    function draw(now) {
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      const t = (now - start) / 1000;
+      const omega = energy(n) * Number(speed.value);
+      const theta = omega * t + Number(phase.value);
+      const mixAmount = Number(mix.value);
+      const secondN = n === 3 ? 2 : n + 1;
+      const theta2 = energy(secondN) * Number(speed.value) * t + Number(phase.value);
+
+      speedOut.textContent = `${Number(speed.value).toFixed(2)}x`;
+      phaseOut.textContent = `${(Number(phase.value) / Math.PI).toFixed(2)}π`;
+      mixOut.textContent = `${Math.round(mixAmount * 100)}%`;
+
+      drawGrid(width, height);
+
+      const waveY = height * 0.42;
+      const waveScale = Math.min(120, height * 0.18);
+      const probY = height * 0.84;
+      const probScale = Math.min(135, height * 0.2);
+
+      const baseWeight = Math.sqrt(1 - mixAmount);
+      const mixWeight = Math.sqrt(mixAmount);
+
+      const real = (x) => baseWeight * phi(n, x) * Math.cos(theta) + mixWeight * phi(secondN, x) * Math.cos(theta2);
+      const imag = (x) => -baseWeight * phi(n, x) * Math.sin(theta) - mixWeight * phi(secondN, x) * Math.sin(theta2);
+      const prob = (x) => {
+        const re = real(x);
+        const im = imag(x);
+        return re * re + im * im;
+      };
+
+      pathFor(real, waveScale, waveY, width, height);
+      ctx.strokeStyle = "#66d9c6";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      pathFor(imag, waveScale, waveY, width, height);
+      ctx.strokeStyle = "#ff7f9f";
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.globalAlpha = 0.18;
+      pathFor(prob, probScale, probY, width, height);
+      ctx.lineTo(width - 48, probY);
+      ctx.lineTo(48, probY);
+      ctx.closePath();
+      ctx.fillStyle = "#ffcf6a";
+      ctx.fill();
+      ctx.restore();
+
+      pathFor(prob, probScale, probY, width, height);
+      ctx.strokeStyle = "#ffcf6a";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      const indicatorX = 48 + ((theta / (Math.PI * 2)) % 1) * (width - 96);
+      ctx.fillStyle = "rgba(102, 217, 198, 0.18)";
+      ctx.beginPath();
+      ctx.arc(indicatorX, 54, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      requestAnimationFrame(draw);
+    }
+
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => {
+        n = Number(button.dataset.n);
+        buttons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+      });
+    });
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+    requestAnimationFrame(draw);
+  </script>
+</body>
+</html>
